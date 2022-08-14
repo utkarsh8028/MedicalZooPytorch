@@ -53,20 +53,20 @@ def create_2d_views(predictions, segment_map, path_to_save):
     # todo scale to range [0,255 for tensor borad] ??????
     segment_pred = seg_map_vizualization_iseg(predictions)
 
-    s1, s2, s3 = show_mid_slice(segment_pred, return_views=True)
+    s1, s2, s3 = show_mid_slice(predictions, return_views=True)
     p1, p2, p3 = show_mid_slice(segment_map, return_views=True)
 
-    assert s1.shape == p1.shape
-    assert s2.shape == p2.shape
-    assert s3.shape == p3.shape
+    # assert s1.shape == p1.shape
+    # assert s2.shape == p2.shape
+    # assert s3.shape == p3.shape
 
     list_vol = [s1, p1, s2, p2, s3, p3]
     rows, columns = 3, 2
     figure = plt.figure(figsize=(16, 16))
     for i in range(len(list_vol)):
         figure.add_subplot(rows, columns, i + 1)
-        # plt.imshow(list_vol[i], cmap='gray')
-        plt.imshow(list_vol[i])
+        plt.imshow(list_vol[i].cpu(), cmap='gray')
+        #plt.imshow(list_vol[i].cpu())
 
     plt.savefig(path_to_save)
     print("DONEEEEEEEEEEEEEEEE 2D views production....")
@@ -82,7 +82,7 @@ def create_2d_views(predictions, segment_map, path_to_save):
 
 def seg_map_vizualization_iseg(segmentation_map):
     # visual labels of ISEG-2017
-    label_values = [0, 10, 150, 250]
+    label_values = [0, 240, 240, 155]
     for c, j in enumerate(label_values):
         segmentation_map[segmentation_map == c] = j
     return segmentation_map

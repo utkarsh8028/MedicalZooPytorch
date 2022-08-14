@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 import lib.augment3D as augment3D
 import lib.utils as utils
 from lib.medloaders import medical_image_process as img_loader
-from lib.medloaders.medical_loader_utils import create_sub_volumes
+from lib.medloaders.medical_loader_utils import create_sub_volumes, get_viz_set
 
 
 class MICCAIBraTS2020(Dataset):
@@ -56,11 +56,11 @@ class MICCAIBraTS2020(Dataset):
         self.sub_vol_path = self.root + '/brats2020/generated/' + mode + subvol + '/'
         utils.make_dirs(self.sub_vol_path)
 
-        list_IDsT1 = sorted(glob.glob(os.path.join(self.training_path, '*/*t1.nii.gz')))
-        list_IDsT1ce = sorted(glob.glob(os.path.join(self.training_path, '*/*t1ce.nii.gz')))
-        list_IDsT2 = sorted(glob.glob(os.path.join(self.training_path, '*/*t2.nii.gz')))
-        list_IDsFlair = sorted(glob.glob(os.path.join(self.training_path, '*/*_flair.nii.gz')))
-        labels = sorted(glob.glob(os.path.join(self.training_path, '*/*_seg.nii.gz')))
+        list_IDsT1 = sorted(glob.glob(os.path.join(self.training_path, '*/*t1.nii')))
+        list_IDsT1ce = sorted(glob.glob(os.path.join(self.training_path, '*/*t1ce.nii')))
+        list_IDsT2 = sorted(glob.glob(os.path.join(self.training_path, '*/*t2.nii')))
+        list_IDsFlair = sorted(glob.glob(os.path.join(self.training_path, '*/*_flair.nii')))
+        labels = sorted(glob.glob(os.path.join(self.training_path, '*/*_seg.nii')))
 
         list_IDsT1, list_IDsT1ce, list_IDsT2, list_IDsFlair, labels = utils.shuffle_lists(list_IDsT1, list_IDsT1ce,
                                                                                           list_IDsT2,
@@ -92,10 +92,19 @@ class MICCAIBraTS2020(Dataset):
                                            full_vol_dim=self.full_vol_dim, crop_size=self.crop_size,
                                            sub_vol_path=self.sub_vol_path, th_percent=self.threshold)
         elif self.mode == 'test':
-            self.list_IDsT1 = sorted(glob.glob(os.path.join(self.testing_path, '*GG/*/*t1.nii.gz')))
-            self.list_IDsT1ce = sorted(glob.glob(os.path.join(self.testing_path, '*GG/*/*t1ce.nii.gz')))
-            self.list_IDsT2 = sorted(glob.glob(os.path.join(self.testing_path, '*GG/*/*t2.nii.gz')))
-            self.list_IDsFlair = sorted(glob.glob(os.path.join(self.testing_path, '*GG/*/*_flair.nii.gz')))
+            list_IDsT1 = list_IDsT1[split_idx:]
+            list_IDsT1ce = list_IDsT1ce[split_idx:]
+            list_IDsT2 = list_IDsT2[split_idx:]
+            list_IDsFlair = list_IDsFlair[split_idx:]
+            labels = labels[split_idx:]
+            self.full_volume = get_viz_set(list_IDsT1,list_IDsT1ce, list_IDsT2,list_IDsFlair, labels, dataset_name="brats2020")
+            self.list_IDsT1 = sorted(glob.glob(os.path.join(self.testing_path, '*/*t1.nii')))
+            self.list_IDsT1ce = sorted(glob.glob(os.path.join(self.testing_path, '*/*t1ce.nii')))
+            self.list_IDsT2 = sorted(glob.glob(os.path.join(self.testing_path, '*/*t2.nii')))
+            self.list_IDsFlair = sorted(glob.glob(os.path.join(self.testing_path, '*/*_flair.nii')))
+            labels = sorted(glob.glob(os.path.join(self.testing_path, '*/*_seg.nii')))
+
+
             self.labels = None
             # Todo inference code here
 
@@ -108,7 +117,7 @@ class MICCAIBraTS2020(Dataset):
         f_t1, f_t1ce, f_t2, f_flair, f_seg = self.list[index]
         img_t1, img_t1ce, img_t2, img_flair, img_seg = np.load(f_t1), np.load(f_t1ce), np.load(f_t2), np.load(
             f_flair), np.load(f_seg)
-        if self.mode == 'train' and self.augmentation:
+        if (self.mode == 'train' or self.mode == 'val' ) and self.augmentation:
             [img_t1, img_t1ce, img_t2, img_flair], img_seg = self.transform([img_t1, img_t1ce, img_t2, img_flair],
                                                                             img_seg)
 

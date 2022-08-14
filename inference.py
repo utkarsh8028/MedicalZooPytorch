@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import lib.utils as utils
 import lib.medloaders as medical_loaders
 import lib.medzoo as medzoo
-from lib.visual3D_temp import non_overlap_padding,test_padding
+from lib.visual3D_temp import visualize_3D_no_overlap_new
 from lib.losses3D import DiceLoss
 #
 
@@ -21,8 +21,7 @@ def main():
 
 
 
-    training_generator, val_generator, full_volume, affine = medical_loaders.generate_datasets(args,
-                                                                                               path='./datasets')
+    full_volume, affine = medical_loaders.select_full_volume_for_infer(args,path='./datasets')
     model, optimizer = medzoo.create_model(args)
     #
     criterion = DiceLoss(classes=args.classes)
@@ -34,16 +33,15 @@ def main():
         model = model.cuda()
         full_volume = full_volume.cuda()
         print("Model transferred in GPU.....")
-    x = torch.randn(3,156,240,240).cuda()
     print(full_volume.shape)
-    output = non_overlap_padding(args,full_volume,model,criterion,kernel_dim=(32,32,32))
+    output = visualize_3D_no_overlap_new(args,full_volume,affine, model,100,(240, 240, 155))
     ## TODO TARGET FOR LOSS
 
     #print(loss_dice)
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batchSz', type=int, default=1)
-    parser.add_argument('--dataset_name', type=str, default="iseg2017")
+    parser.add_argument('--dataset_name', type=str, default="brats2020")
     parser.add_argument('--dim', nargs="+", type=int, default=(64, 64, 64))
     parser.add_argument('--nEpochs', type=int, default=250)
 
@@ -51,8 +49,15 @@ def get_arguments():
     parser.add_argument('--samples_train', type=int, default=1)
     parser.add_argument('--samples_val', type=int, default=1)
     parser.add_argument('--split', type=float, default=0.8)
-    parser.add_argument('--inChannels', type=int, default=2)
-    parser.add_argument('--inModalities', type=int, default=2)
+    parser.add_argument('--inChannels', type=int, default=4)
+    parser.add_argument('--threshold', default=0.0000001, type=float)
+    parser.add_argument('--augmentation', action='store_true', default=True)
+
+    parser.add_argument('--normalization', default='brats', type=str,
+                        help='Tensor normalization: options ,max_min,',
+                        choices=('max_min', 'full_volume_mean', 'brats', 'max', 'mean'))
+    parser.add_argument('--loadData', default=False)
+    parser.add_argument('--inModalities', type=int, default=4)
     parser.add_argument('--fold_id', default='1', type=str, help='Select subject for fold validation')
     parser.add_argument('--lr', default=1e-2, type=float,
                         help='learning rate (default: 1e-3)')
@@ -64,14 +69,13 @@ def get_arguments():
     parser.add_argument('--opt', type=str, default='sgd',
                         choices=('sgd', 'adam', 'rmsprop'))
     parser.add_argument('--pretrained',
-                        default='../saved_models/UNET3D_checkpoints/UNET3D_25_05___15_15_iseg2017_/UNET3D_25_05___15_15_iseg2017__last_epoch.pth',
+                        default='./saved_models/UNET3D_checkpoints/UNET3D_12_08___15_31_brats2020_/UNET3D_12_08___15_31_brats2020__BEST.pth',
                         type=str, metavar='PATH',
                         help='path to pretrained model')
 
     args = parser.parse_args()
 
-    args.save = '../inference_checkpoints/' + args.model + '_checkpoints/' + args.model + '_{}_{}_'.format(
-        utils.datestr(), args.dataset_name)
+    args.save = './inference_checkpoints/' 
     args.tb_log_dir = '../runs/'
     return args
 

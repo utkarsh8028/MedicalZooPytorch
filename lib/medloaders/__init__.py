@@ -13,6 +13,7 @@ from .miccai_2019_pathology import MICCAI2019_gleason_pathology
 from .mrbrains2018 import MRIDatasetMRBRAINS2018
 
 
+
 def generate_datasets(args, path='.././datasets'):
     params = {'batch_size': args.batchSz,
               'shuffle': True,
@@ -206,6 +207,13 @@ def select_full_volume_for_infer(args, path='.././datasets'):
         val_loader = MICCAIBraTS2018('val', dataset_path=path, classes=args.classes, crop_dim=args.dim,
                                      split_idx=split_idx,
                                      samples=samples_val)
+    elif args.dataset_name == "brats2020":
+        split = (0.8, 0.2)
+        total_data = 335
+        split_idx = int(split[0] * total_data)
+        loader = MICCAIBraTS2020(args, 'test', dataset_path=path, classes=args.classes, crop_dim=args.dim,
+                                       split_idx=split_idx, samples=samples_train, load=args.loadData)
+
     elif args.dataset_name == 'COVID_CT':
         train_loader = CovidCTDataset('train', root_dir='.././datasets/covid_ct_dataset/',
                                       txt_COVID='.././datasets/covid_ct_dataset/trainCT_COVID.txt',

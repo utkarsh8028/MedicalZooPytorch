@@ -110,6 +110,7 @@ def visualize_3D_no_overlap_new(args, full_volume, affine, model, epoch, dim):
     classes = args.classes
     modalities, slices, height, width = full_volume.shape
     full_volume_dim = (slices, height, width)
+    x = full_volume[:-1,...].detach()
 
     print("full volume dim=", full_volume_dim, 'crop dim', dim)
     desired_dim = find_crop_dims(full_volume_dim, dim)
@@ -120,6 +121,27 @@ def visualize_3D_no_overlap_new(args, full_volume, affine, model, epoch, dim):
 
     sub_volumes = input_sub_volumes.shape[0]
     predictions = []
+    kernel_dim=(32, 32, 32)
+
+    modalities, D, H, W = x.shape
+    kc, kh, kw = kernel_dim
+    dc, dh, dw = kernel_dim  # stride
+    # Pad to multiples of kernel_dim
+    a = ((roundup(W, kw) - W) // 2 + W % 2, (roundup(W, kw) - W) // 2,
+         (roundup(H, kh) - H) // 2 + H % 2, (roundup(H, kh) - H) // 2,
+         (roundup(D, kc) - D) // 2 + D % 2, (roundup(D, kc) - D) // 2)
+    #print('padding ', a)
+    input_sub_volumes = F.pad(input_sub_volumes, a)
+    segment_map = F.pad(segment_map, a)
+
+    #print('padded shape ', x.shape)
+    assert input_sub_volumes.size(4) % kw == 0
+    assert input_sub_volumes.size(3) % kh == 0
+    assert input_sub_volumes.size(2) % kc == 0
+    patches = x.unfold(1, kc, dc).unfold(2, kh, dh).unfold(3, kw, dw)
+    unfold_shape = list(patches.size())
+
+    patches = patches.contiguous().view(-1, modalities, kc, kh, kw)
 
     for i in range(sub_volumes):
         input_tensor = input_sub_volumes[i, ...].unsqueeze(0)
@@ -128,7 +150,7 @@ def visualize_3D_no_overlap_new(args, full_volume, affine, model, epoch, dim):
     predictions = torch.stack(predictions)
 
     # project back to full volume
-    full_vol_predictions = predictions.view(classes, slices, height, width)
+    full_vol_predictions = predictions.view(classes, input_sub_volumes.size(4), input_sub_volumes.size(3), input_sub_volumes.size(2))
     print("Inference complete", full_vol_predictions.shape)
 
     # arg max to get the labels in full 3d volume
@@ -204,7 +226,7 @@ def find_crop_dims(full_size, mini_dim, adjust_dimension=2):
 
     full_slice = full_size[adjust_dimension]
 
-    return tuple(desired_dim)
+    return tuple( mini_dim)
 
 
 # Todo  test!
